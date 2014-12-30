@@ -3,8 +3,9 @@ var RSVP = require('rsvp'),
     inquirer = require("inquirer");
 
 var git = require('./git'),
+    grunt = require('./grunt'),
     bar = new ProgressBar(':bar', {
-        total: 110
+        total: 90
     });
 
 var baseDir = process.cwd();
@@ -149,6 +150,33 @@ module.exports = {
             .then(function() {
                 bar.tick(10);
 
+                var deferred = RSVP.defer();
+
+                grunt.checkConfig()
+                    .then(function() {
+                        grunt.exec()
+                            .then(grunt.exec.bind(grunt, {
+                                cmd: 'check-coverage'
+                            }))
+                            .then(function() {
+                                deferred.resolve();
+                            })
+                            .catch(function(error) {
+                                var stepError = new Error('GRUNT - an error occured');
+                                stepError.parent = error;
+                                deferred.reject(stepError);
+                            });
+                    })
+                    .catch(function() {
+                        // bypass grunt step if no gruntfile
+                        deferred.resolve();
+                    });
+
+                return deferred.promise;
+            })
+            .then(function() {
+                bar.tick(10);
+
                 return git.exec('tag', [version])
                     .catch(function(error) {
                         var stepError = new Error('GIT - tag generation failed');
@@ -197,12 +225,14 @@ module.exports = {
    - 1. checkout upstream/master
    - 2. checkout -b tmp/release
    - 3. merge --no-ff dev (msg: Release <pkg.version>)
-    4. grunt
-    5. grunt check-coverage
+   - 4. grunt
+   - 5. grunt check-coverage
     6. ajout fichiers générés (pt soucis sur le premier car dans gitignore)
     7. amend
    - 8. tag <pkg.version>
    - 9. push upstream tmp/release:master
    - 10. push upstream tag
    - 11. br -D tmp/release
+
+   TODO : add force on tags
 */
