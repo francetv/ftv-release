@@ -4,6 +4,7 @@ var RSVP = require('rsvp'),
 var gitWrapper = new GitWrapper();
 
 module.exports = {
+    baseBranch: null,
     exec: function exec() {
         var deferred = RSVP.defer();
         var args = [].slice.call(arguments);
@@ -18,5 +19,19 @@ module.exports = {
         gitWrapper.exec.apply(gitWrapper, args);
 
         return deferred.promise;
+    },
+    init: function() {
+        var that = this;
+        return this.exec('rev-parse', ['--abbrev-ref HEAD'])
+            .then(function(branch) {
+                that.baseBranch = branch;
+            });
+    },
+    restore: function() {
+        if (!this.baseBranch) {
+            throw new Error('No base branch is definded');
+        }
+
+        return this.exec('checkout', [this.baseBranch]);
     }
 };

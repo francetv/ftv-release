@@ -15,6 +15,9 @@ module.exports = {
     release: function release() {
         RSVP.Promise.resolve()
             .then(function() {
+                return git.init();
+            })
+            .then(function() {
                 var deferred = RSVP.defer();
 
                 try {
@@ -142,8 +145,10 @@ module.exports = {
                 process.stdout.write('\n\nERROR ' + error.message + ' ' + (error.parent ? "(" + error.parent.message + ")" : '') + '\n');
             })
             .finally(function() {
-                git.exec('checkout', ['-']);
-                process.exit(1);
+                git.restore()
+                    .then(function() {
+                        process.exit(1);
+                    });
             });
     }
 };
