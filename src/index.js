@@ -146,6 +146,36 @@ module.exports = {
                         throw stepError;
                     });
             })
+            .then(function() {
+                bar.tick(10);
+
+                return git.exec('tag', [version])
+                    .catch(function(error) {
+                        var stepError = new Error('GIT - tag generation failed');
+                        stepError.parent = error;
+                        throw stepError;
+                    });
+            })
+            .then(function() {
+                bar.tick(10);
+
+                return git.exec('push', ['upstream', 'tmp/release:master'])
+                    .catch(function(error) {
+                        var stepError = new Error('GIT - push tmp/release to upstream:master failed');
+                        stepError.parent = error;
+                        throw stepError;
+                    });
+            })
+            .then(function() {
+                bar.tick(10);
+
+                return git.exec('push', ['upstream', version])
+                    .catch(function(error) {
+                        var stepError = new Error('GIT - push tag to upstream failed');
+                        stepError.parent = error;
+                        throw stepError;
+                    });
+            })
             // Catch all errors
             .catch(function(error) {
                 process.stdout.write('\n\nERROR ' + error.message + ' ' + (error.parent ? "(" + error.parent.message + ")" : '') + '\n');
@@ -164,15 +194,15 @@ module.exports = {
 
 
 /* Steps
-    1. checkout upstream/master
-    2. checkout -b tmp/release
-    3. merge --no-ff dev (msg: Release <pkg.version>)
+   - 1. checkout upstream/master
+   - 2. checkout -b tmp/release
+   - 3. merge --no-ff dev (msg: Release <pkg.version>)
     4. grunt
     5. grunt check-coverage
     6. ajout fichiers générés (pt soucis sur le premier car dans gitignore)
     7. amend
-    8. tag <pkg.version>
-    9. push upstream tmp/release:master
-    10. push upstream tag
-    11. br -D tmp/release
+   - 8. tag <pkg.version>
+   - 9. push upstream tmp/release:master
+   - 10. push upstream tag
+   - 11. br -D tmp/release
 */
