@@ -27,7 +27,7 @@ module.exports = {
 
         return this.exec('rev-parse', ['--abbrev-ref HEAD'])
             .then(function(branch) {
-                that.baseBranch = branch;
+                that.baseBranch = branch.replace(/(\r\n|\n|\r)/gm, "");
             });
     },
     clean: function(branch) {

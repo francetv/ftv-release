@@ -139,7 +139,7 @@ module.exports = {
             .then(function() {
                 bar.tick(10);
 
-                return git.exec('merge', ['--no-ff', 'devee', '-m', 'Release ' + version])
+                return git.exec('merge', ['--no-ff', git.baseBranch, '-m', 'Release ' + version])
                     .catch(function(error) {
                         var stepError = new Error('GIT - merge in no fast-forward mode failed (message: Release ' + version + ')');
                         stepError.parent = error;
