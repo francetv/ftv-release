@@ -3,6 +3,8 @@ var RSVP = require('rsvp'),
 
 var gitWrapper = new GitWrapper();
 
+var tmpBranch = 'tmp/release';
+
 module.exports = {
     baseBranch: null,
     exec: function exec() {
@@ -22,6 +24,7 @@ module.exports = {
     },
     init: function() {
         var that = this;
+
         return this.exec('rev-parse', ['--abbrev-ref HEAD'])
             .then(function(branch) {
                 that.baseBranch = branch;
@@ -31,10 +34,32 @@ module.exports = {
         return this.exec('branch', ['-D', branch]);
     },
     restore: function() {
+        var that = this;
+        var deferred = RSVP.defer();
+
         if (!this.baseBranch) {
-            throw new Error('No base branch is definded');
+            return deferred.reject(new Error('No base branch is definded'));
         }
 
-        return this.exec('checkout', [this.baseBranch]);
+        this.exec('rev-parse', ['--abbrev-ref HEAD'])
+            .then(function(currentBranch) {
+                if (that.baseBranch === currentBranch) {
+                    return deferred.resolve();
+                }
+
+                that.exec('checkout', [that.baseBranch])
+                    .then(function() {
+                        that.clean(tmpBranch);
+                        deferred.resolve();
+                    })
+                    .catch(function() {
+                        return deferred.reject(new Error('Can\'t checkout on the previous working branch'));
+                    });
+            })
+            .catch(function() {
+                return deferred.reject(new Error('Can\'t get the current branch'));
+            });
+
+        return deferred.promise;
     }
 };

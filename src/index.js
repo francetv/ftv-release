@@ -10,6 +10,7 @@ var git = require('./git'),
 var baseDir = process.cwd();
 var versions = {};
 var version;
+var tmpBranch = 'tmp/release';
 
 module.exports = {
     release: function release() {
@@ -123,8 +124,8 @@ module.exports = {
             })
             .then(function() {
                 bar.tick(10);
-                return git.clean('tmp/release')
-                    .then(git.exec('checkout', ['-b', 'tmp/release']))
+                return git.clean(tmpBranch)
+                    .then(git.exec('checkout', ['-b', tmpBranch]))
                     .catch(function(error) {
                         var stepError = new Error('GIT - checkout new temporary release branch failed');
                         stepError.parent = error;
@@ -146,12 +147,11 @@ module.exports = {
             })
             .finally(function() {
                 git.restore()
-                    .then(git.clean('tmp/release'))
-                    .then(function() {
-                        process.exit(1);
-                    })
                     .catch(function(error) {
-                        process.stdout.write('\n\nERROR ' + error.message + ' ' + (error.parent ? "(" + error.parent.message + ")" : '') + '\n');
+                        process.stdout.write('\n\nERROR ' + error.message + '\n');
+                    })
+                    .finally(function() {
+                        process.exit(1);
                     });
             });
     }
