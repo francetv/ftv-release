@@ -123,7 +123,7 @@ module.exports = {
             })
             .then(function() {
                 bar.tick(10);
-                return git.exec('branch', ['-D', 'tmp/release'])
+                return git.clean('tmp/release')
                     .then(git.exec('checkout', ['-b', 'tmp/release']))
                     .catch(function(error) {
                         var stepError = new Error('GIT - checkout new temporary release branch failed');
@@ -146,8 +146,12 @@ module.exports = {
             })
             .finally(function() {
                 git.restore()
+                    .then(git.clean('tmp/release'))
                     .then(function() {
                         process.exit(1);
+                    })
+                    .catch(function(error) {
+                        process.stdout.write('\n\nERROR ' + error.message + ' ' + (error.parent ? "(" + error.parent.message + ")" : '') + '\n');
                     });
             });
     }

@@ -27,6 +27,9 @@ module.exports = {
                 that.baseBranch = branch;
             });
     },
+    clean: function(branch) {
+        return this.exec('branch', ['-D', branch]);
+    },
     restore: function() {
         if (!this.baseBranch) {
             throw new Error('No base branch is definded');
