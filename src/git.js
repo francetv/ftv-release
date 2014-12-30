@@ -31,7 +31,7 @@ module.exports = {
             });
     },
     clean: function(branch) {
-        return this.exec('branch', ['-D', branch]);
+        this.exec('branch', ['-D', branch]);
     },
     restore: function() {
         var that = this;

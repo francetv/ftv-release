@@ -97,6 +97,7 @@ module.exports = {
             })
             .then(function() {
                 bar.tick(10);
+
                 return git.exec('diff', ['--exit-code'])
                     .then(git.exec('diff', ['--cached', '--exit-code']))
                     .catch(function(error) {
@@ -106,6 +107,7 @@ module.exports = {
             })
             .then(function() {
                 bar.tick(10);
+
                 return git.exec('fetch', ['--all'])
                     .catch(function(error) {
                         var stepError = new Error('GIT - fetch all remotes failed');
@@ -115,6 +117,7 @@ module.exports = {
             })
             .then(function() {
                 bar.tick(10);
+
                 return git.exec('checkout', ['upstream/master'])
                     .catch(function(error) {
                         var stepError = new Error('GIT - checkout upstream/master failed');
@@ -124,8 +127,9 @@ module.exports = {
             })
             .then(function() {
                 bar.tick(10);
-                return git.clean(tmpBranch)
-                    .then(git.exec('checkout', ['-b', tmpBranch]))
+                git.clean(tmpBranch);
+
+                return git.exec('checkout', ['-b', tmpBranch])
                     .catch(function(error) {
                         var stepError = new Error('GIT - checkout new temporary release branch failed');
                         stepError.parent = error;
@@ -134,6 +138,7 @@ module.exports = {
             })
             .then(function() {
                 bar.tick(10);
+
                 return git.exec('merge', ['--no-ff', 'devee', '-m', 'Release ' + version])
                     .catch(function(error) {
                         var stepError = new Error('GIT - merge in no fast-forward mode failed (message: Release ' + version + ')');
