@@ -184,6 +184,26 @@ module.exports = {
             .then(function() {
                 bar.tick(10);
 
+                return git.exec('add', ['.'])
+                    .catch(function(error) {
+                        var stepError = new Error('GIT - add new generated files failed');
+                        stepError.parent = error;
+                        throw stepError;
+                    });
+            })
+            .then(function() {
+                bar.tick(10);
+
+                return git.exec('commit', ['--amend', '--no-edit'])
+                    .catch(function(error) {
+                        var stepError = new Error('GIT - amend new generated files failed');
+                        stepError.parent = error;
+                        throw stepError;
+                    });
+            })
+            .then(function() {
+                bar.tick(10);
+
                 return git.checkForTag(version)
                     .then(function() {
                         return git.exec('tag', ['-f', version])
@@ -237,7 +257,7 @@ module.exports = {
    - 3. merge --no-ff dev (msg: Release <pkg.version>)
    - 4. grunt
    - 5. grunt check-coverage
-    6. ajout fichiers générés (pt soucis sur le premier car dans gitignore)
+   - 6. ajout fichiers générés (pt soucis sur le premier car dans gitignore)
     7. amend
    - 8. check for tag <pkg.version>
    - 8'. tag -f <pkg.version>
