@@ -100,7 +100,9 @@ module.exports = {
                 bar.tick(10);
 
                 return git.exec('diff', ['--exit-code'])
-                    .then(git.exec('diff', ['--cached', '--exit-code']))
+                    .then(function() {
+                        return git.exec('diff', ['--cached', '--exit-code']);
+                    })
                     .catch(function(error) {
                         var stepError = new Error('GIT - Please, commit your changes or stash them first');
                         throw stepError;
@@ -155,9 +157,14 @@ module.exports = {
                 grunt.checkConfig()
                     .then(function() {
                         grunt.exec()
-                            .then(grunt.exec.bind(grunt, {
-                                cmd: 'check-coverage'
-                            }))
+                            .then(function() {
+                                return grunt.exec({
+                                        cmd: 'check-coverage'
+                                    })
+                                    .catch(function(error) {
+                                        throw error;
+                                    });
+                            })
                             .then(function() {
                                 deferred.resolve();
                             })
@@ -177,11 +184,14 @@ module.exports = {
             .then(function() {
                 bar.tick(10);
 
-                return git.exec('tag', [version])
-                    .catch(function(error) {
-                        var stepError = new Error('GIT - tag generation failed');
-                        stepError.parent = error;
-                        throw stepError;
+                return git.checkForTag(version)
+                    .then(function() {
+                        return git.exec('tag', ['-f', version])
+                            .catch(function(error) {
+                                var stepError = new Error('GIT - tag generation failed');
+                                stepError.parent = error;
+                                throw stepError;
+                            });
                     });
             })
             .then(function() {
@@ -229,7 +239,8 @@ module.exports = {
    - 5. grunt check-coverage
     6. ajout fichiers générés (pt soucis sur le premier car dans gitignore)
     7. amend
-   - 8. tag <pkg.version>
+   - 8. check for tag <pkg.version>
+   - 8'. tag -f <pkg.version>
    - 9. push upstream tmp/release:master
    - 10. push upstream tag
    - 11. br -D tmp/release

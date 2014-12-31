@@ -1,5 +1,6 @@
 var RSVP = require('rsvp'),
-    GitWrapper = require('git-wrapper');
+    GitWrapper = require('git-wrapper'),
+    inquirer = require("inquirer");
 
 var gitWrapper = new GitWrapper();
 
@@ -58,6 +59,33 @@ module.exports = {
             })
             .catch(function() {
                 return deferred.reject(new Error('Can\'t get the current branch'));
+            });
+
+        return deferred.promise;
+    },
+    checkForTag: function(version) {
+        var deferred = RSVP.defer();
+
+        // Check tag existance on upstream
+        this.exec('ls-remote upstream | grep', ['tags/' + version])
+            .then(function(branchInfo) {
+                process.stdout.write('\n');
+                inquirer.prompt([{
+                    type: 'confirm',
+                    name: 'overwriteTag',
+                    message: 'The tag ' + version + ' already exist on upstream, overwrite it?',
+                    default: false
+                }], function(answers) {
+                    if (!answers.overwriteTag) {
+                        return deferred.reject(new Error('Process stopped if no tag created or updated'));
+                    }
+
+                    deferred.resolve();
+                });
+            })
+            .catch(function(error) {
+                // catch if no tags found
+                return deferred.resolve();
             });
 
         return deferred.promise;
