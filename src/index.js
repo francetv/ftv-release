@@ -9,16 +9,19 @@ var git = require('./git'),
     });
 
 var baseDir = process.cwd();
-var versions = {};
-var version;
 var tmpBranch = 'tmp/release';
+
+var version;
+var versions = {};
 
 module.exports = {
     release: function release() {
         RSVP.Promise.resolve()
+            // Init git process (stock current branch etc.)
             .then(function() {
                 return git.init();
             })
+            // Check if package.json file exists
             .then(function() {
                 var deferred = RSVP.defer();
 
@@ -43,6 +46,7 @@ module.exports = {
 
                 return deferred.promise;
             })
+            // Check if bower.json file exists
             .then(function() {
                 var deferred = RSVP.defer();
 
@@ -67,6 +71,7 @@ module.exports = {
 
                 return deferred.promise;
             })
+            // Set the version to release (error if npm & bower versions are different)
             .then(function() {
                 if (!Object.keys(versions).length) {
                     throw new Error('Stop release process without any bower.json or package.json file');
@@ -78,6 +83,7 @@ module.exports = {
 
                 version = versions.npm ? versions.npm : versions.bower;
             })
+            // Confirm the version to release
             .then(function() {
                 var deferred = RSVP.defer();
 
@@ -96,6 +102,7 @@ module.exports = {
 
                 return deferred.promise;
             })
+            // Check for unstaged or changed files
             .then(function() {
                 bar.tick(10);
 
@@ -108,16 +115,18 @@ module.exports = {
                         throw stepError;
                     });
             })
+            // Fetch the upstream remote
             .then(function() {
                 bar.tick(10);
 
-                return git.exec('fetch', ['--all'])
+                return git.exec('fetch', ['upstream'])
                     .catch(function(error) {
-                        var stepError = new Error('GIT - fetch all remotes failed');
+                        var stepError = new Error('GIT - fetch upstream remotes failed');
                         stepError.parent = error;
                         throw stepError;
                     });
             })
+            // Checkout the upstream/master
             .then(function() {
                 bar.tick(10);
 
@@ -128,6 +137,7 @@ module.exports = {
                         throw stepError;
                     });
             })
+            // Checkout a new branch from the upstream/master (called tmp/release)
             .then(function() {
                 bar.tick(10);
                 git.clean(tmpBranch);
@@ -139,6 +149,7 @@ module.exports = {
                         throw stepError;
                     });
             })
+            // Merge in no-fast-forward the stocked working branch
             .then(function() {
                 bar.tick(10);
 
@@ -149,6 +160,7 @@ module.exports = {
                         throw stepError;
                     });
             })
+            // Launch Grunt tasks (default & check-coverage)
             .then(function() {
                 bar.tick(10);
 
@@ -181,6 +193,7 @@ module.exports = {
 
                 return deferred.promise;
             })
+            // Add the new generated files
             .then(function() {
                 bar.tick(10);
 
@@ -191,6 +204,7 @@ module.exports = {
                         throw stepError;
                     });
             })
+            // Amend those files to the merge commit
             .then(function() {
                 bar.tick(10);
 
@@ -201,6 +215,7 @@ module.exports = {
                         throw stepError;
                     });
             })
+            // Generate or overwrite the version tag
             .then(function() {
                 bar.tick(10);
 
@@ -214,6 +229,7 @@ module.exports = {
                             });
                     });
             })
+            // Push the temporary branch to the upstream master
             .then(function() {
                 bar.tick(10);
 
@@ -224,6 +240,7 @@ module.exports = {
                         throw stepError;
                     });
             })
+            // Push the tag to the upstream remote
             .then(function() {
                 bar.tick(10);
 
@@ -238,6 +255,7 @@ module.exports = {
             .catch(function(error) {
                 process.stdout.write('\n\nERROR ' + error.message + ' ' + (error.parent ? "(" + error.parent.message + ")" : '') + '\n');
             })
+            // Finally restore the working environment (checkout stocked working branch and delete temporary one)
             .finally(function() {
                 git.restore()
                     .catch(function(error) {
@@ -249,21 +267,3 @@ module.exports = {
             });
     }
 };
-
-
-/* Steps
-   - 1. checkout upstream/master
-   - 2. checkout -b tmp/release
-   - 3. merge --no-ff dev (msg: Release <pkg.version>)
-   - 4. grunt
-   - 5. grunt check-coverage
-   - 6. ajout fichiers générés (pt soucis sur le premier car dans gitignore)
-    7. amend
-   - 8. check for tag <pkg.version>
-   - 8'. tag -f <pkg.version>
-   - 9. push upstream tmp/release:master
-   - 10. push upstream tag
-   - 11. br -D tmp/release
-
-   TODO : add force on tags
-*/
