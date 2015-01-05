@@ -21,6 +21,6 @@
     "rsvp": "^3.0.14"
   },
   "devDependencies": {
-    "ftv-mergeup": "^1.4.0"
+    "ftv-mergeup": "*"
   }
 }
