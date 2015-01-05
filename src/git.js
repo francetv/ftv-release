@@ -36,7 +36,7 @@ var git = module.exports = {
         var deferred = RSVP.defer();
 
         if (!git.baseBranch) {
-            return deferred.reject(new Error('No base branch is definded'));
+            throw new Error('No base branch is definded');
         }
 
         git.exec('rev-parse', ['--abbrev-ref HEAD'])
@@ -51,11 +51,11 @@ var git = module.exports = {
                         deferred.resolve();
                     })
                     .catch(function() {
-                        return deferred.reject(new Error('Can\'t checkout on the previous working branch'));
+                        deferred.reject(new Error('Can\'t checkout on the previous working branch'));
                     });
             })
             .catch(function() {
-                return deferred.reject(new Error('Can\'t get the current branch'));
+                deferred.reject(new Error('Can\'t get the current branch'));
             });
 
         return deferred.promise;
