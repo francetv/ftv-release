@@ -1,6 +1,6 @@
 {
-  "name": "release",
-  "version": "0.0.0",
+  "name": "ftv-release",
+  "version": "1.0.0",
   "description": "Tool for dynamic release",
   "main": "index.js",
   "scripts": {
