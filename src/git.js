@@ -6,7 +6,7 @@ var gitWrapper = new GitWrapper();
 
 var tmpBranch = 'tmp/release';
 
-module.exports = {
+var git = module.exports = {
     baseBranch: null,
     exec: function exec() {
         var deferred = RSVP.defer();
@@ -24,41 +24,38 @@ module.exports = {
         return deferred.promise;
     },
     init: function() {
-        var that = this;
-
-        return this.exec('rev-parse', ['--abbrev-ref HEAD'])
+        return git.exec('rev-parse', ['--abbrev-ref HEAD'])
             .then(function(branch) {
-                that.baseBranch = branch.replace(/(\r\n|\n|\r)/gm, "");
+                git.baseBranch = branch.replace(/(\r\n|\n|\r)/gm, "");
             });
     },
     clean: function(branch) {
-        this.exec('branch', ['-D', branch]);
+        git.exec('branch', ['-D', branch]);
     },
     restore: function() {
-        var that = this;
         var deferred = RSVP.defer();
 
-        if (!this.baseBranch) {
-            return deferred.reject(new Error('No base branch is definded'));
+        if (!git.baseBranch) {
+            throw new Error('No base branch is definded');
         }
 
-        this.exec('rev-parse', ['--abbrev-ref HEAD'])
+        git.exec('rev-parse', ['--abbrev-ref HEAD'])
             .then(function(currentBranch) {
-                if (that.baseBranch === currentBranch) {
+                if (git.baseBranch === currentBranch) {
                     return deferred.resolve();
                 }
 
-                that.exec('checkout', [that.baseBranch])
+                git.exec('checkout', [git.baseBranch])
                     .then(function() {
-                        that.clean(tmpBranch);
+                        git.clean(tmpBranch);
                         deferred.resolve();
                     })
                     .catch(function() {
-                        return deferred.reject(new Error('Can\'t checkout on the previous working branch'));
+                        deferred.reject(new Error('Can\'t checkout on the previous working branch'));
                     });
             })
             .catch(function() {
-                return deferred.reject(new Error('Can\'t get the current branch'));
+                deferred.reject(new Error('Can\'t get the current branch'));
             });
 
         return deferred.promise;
@@ -67,7 +64,7 @@ module.exports = {
         var deferred = RSVP.defer();
 
         // Check tag existance on upstream
-        this.exec('ls-remote upstream | grep', ['tags/' + version])
+        git.exec('ls-remote upstream | grep', ['tags/' + version])
             .then(function(branchInfo) {
                 process.stdout.write('\n');
                 inquirer.prompt([{
