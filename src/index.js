@@ -15,7 +15,9 @@ var version;
 var versions = {};
 
 module.exports = {
-    release: function release() {
+    release: function release(params) {
+        var dryRun = params.dryRun || false;
+
         RSVP.Promise.resolve()
             // Init git process (stock current branch etc.)
             .then(function() {
@@ -219,6 +221,11 @@ module.exports = {
             .then(function() {
                 bar.tick(10);
 
+                if (dryRun) {
+                    process.stdout.write('\nDRY RUN - generate tag ' + version);
+                    return;
+                }
+
                 return git.checkForTag(version)
                     .then(function() {
                         return git.exec('tag', ['-f', version])
@@ -233,6 +240,11 @@ module.exports = {
             .then(function() {
                 bar.tick(10);
 
+                if (dryRun) {
+                    process.stdout.write('DRY RUN - push tmp/release to upstream:master');
+                    return;
+                }
+
                 return git.exec('push', ['upstream', 'tmp/release:master'])
                     .catch(function(error) {
                         var stepError = new Error('GIT - push tmp/release to upstream:master failed');
@@ -243,6 +255,11 @@ module.exports = {
             // Push the tag to the upstream remote
             .then(function() {
                 bar.tick(10);
+
+                if (dryRun) {
+                    process.stdout.write('DRY RUN - push tag to upstream');
+                    return;
+                }
 
                 return git.exec('push', ['upstream', version])
                     .catch(function(error) {
@@ -258,6 +275,9 @@ module.exports = {
             // Finally restore the working environment (checkout stocked working branch and delete temporary one)
             .finally(function() {
                 git.restore()
+                    .then(function() {
+                        process.stdout.write('\n\nSuccessfully deploy ' + (dryRun ? '(in dry-run mode)' : '') + ' the release ' + version + '\n');
+                    })
                     .catch(function(error) {
                         process.stdout.write('\n\nERROR ' + error.message + '\n');
                     })
