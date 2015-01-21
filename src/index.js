@@ -1,9 +1,11 @@
 var RSVP = require('rsvp'),
     ProgressBar = require('progress'),
+    Hipchatter = require('hipchatter'),
     inquirer = require("inquirer");
 
 var git = require('./git'),
     grunt = require('./grunt'),
+    config = require('../config.json'),
     bar = new ProgressBar(':bar', {
         total: 90
     });
@@ -13,6 +15,8 @@ var tmpBranch = 'tmp/release';
 
 var version;
 var versions = {};
+
+var projectName;
 
 module.exports = {
     release: function release(params) {
@@ -29,6 +33,7 @@ module.exports = {
 
                 try {
                     var packageConf = require(baseDir + '/package.json');
+                    projectName = packageConf.name;
                     versions.npm = packageConf.version;
                     deferred.resolve();
                 } catch (e) {
@@ -55,6 +60,7 @@ module.exports = {
                 try {
                     var bowerConf = require(baseDir + '/bower.json');
                     versions.bower = bowerConf.version;
+                    projectName = projectName || bowerConf.name;
                     deferred.resolve();
                 } catch (e) {
                     inquirer.prompt([{
@@ -268,18 +274,46 @@ module.exports = {
                         throw stepError;
                     });
             })
+            .then(function() {
+                bar.tick(10);
+
+                var deferred = RSVP.defer();
+                var hipchat = new Hipchatter(config.hipchatUserToken);
+                var message = 'New version ' + version + ' released for ' + projectName;
+
+                hipchat.notify(config.hipchatRoomId, {
+                    message: message,
+                    color: 'green',
+                    token: config.hipchatUserToken,
+                    notify: true
+                }, function(err) {
+                    if (err === null) {
+                        process.stdout.write('\n\nSuccessfully notified the room for version ' + version + ' release\n');
+                        deferred.resolve();
+                    } else {
+                        var stepError = new Error('HIPCHAT - notification failed');
+                        stepError.parent = error;
+                        throw stepError;
+                    }
+                });
+
+                return deferred.promise;
+            })
             // Catch all errors
             .catch(function(error) {
-                process.stdout.write('\n\nERROR ' + error.message + ' ' + (error.parent ? "(" + error.parent.message + ")" : '') + '\n');
+                process.stdout.write('\nERROR ' + error.message + ' ' + (error.parent ? "(" + error.parent.message + ")" : '') + '\n');
+            })
+            .then(function() {
+                process.stdout.write('\nSuccessfully deploy ' + (dryRun ? '(in dry-run mode)' : '') + ' the release ' + version + '\n');
             })
             // Finally restore the working environment (checkout stocked working branch and delete temporary one)
             .finally(function() {
                 git.restore()
                     .then(function() {
-                        process.stdout.write('\n\nSuccessfully deploy ' + (dryRun ? '(in dry-run mode)' : '') + ' the release ' + version + '\n');
+                        process.stdout.write('Successfully restore git previous work state\n');
                     })
                     .catch(function(error) {
-                        process.stdout.write('\n\nERROR ' + error.message + '\n');
+                        process.stdout.write('\n\nERROR (during git restore) ' + error.message + '\n');
                     })
                     .finally(function() {
                         process.exit(1);
