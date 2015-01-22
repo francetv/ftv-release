@@ -1,9 +1,11 @@
 var RSVP = require('rsvp'),
     ProgressBar = require('progress'),
+    Hipchatter = require('hipchatter'),
     inquirer = require("inquirer");
 
 var git = require('./git'),
     grunt = require('./grunt'),
+    config = require('../config.json'),
     bar = new ProgressBar(':bar', {
         total: 90
     });
@@ -14,8 +16,12 @@ var tmpBranch = 'tmp/release';
 var version;
 var versions = {};
 
+var projectName;
+
 module.exports = {
-    release: function release() {
+    release: function release(params) {
+        var dryRun = params.dryRun || false;
+
         RSVP.Promise.resolve()
             // Init git process (stock current branch etc.)
             .then(function() {
@@ -27,6 +33,7 @@ module.exports = {
 
                 try {
                     var packageConf = require(baseDir + '/package.json');
+                    projectName = packageConf.name;
                     versions.npm = packageConf.version;
                     deferred.resolve();
                 } catch (e) {
@@ -53,6 +60,7 @@ module.exports = {
                 try {
                     var bowerConf = require(baseDir + '/bower.json');
                     versions.bower = bowerConf.version;
+                    projectName = projectName || bowerConf.name;
                     deferred.resolve();
                 } catch (e) {
                     inquirer.prompt([{
@@ -219,6 +227,11 @@ module.exports = {
             .then(function() {
                 bar.tick(10);
 
+                if (dryRun) {
+                    process.stdout.write('\nDRY RUN - generate tag ' + version);
+                    return;
+                }
+
                 return git.checkForTag(version)
                     .then(function() {
                         return git.exec('tag', ['-f', version])
@@ -233,6 +246,11 @@ module.exports = {
             .then(function() {
                 bar.tick(10);
 
+                if (dryRun) {
+                    process.stdout.write('DRY RUN - push tmp/release to upstream:master');
+                    return;
+                }
+
                 return git.exec('push', ['upstream', 'tmp/release:master'])
                     .catch(function(error) {
                         var stepError = new Error('GIT - push tmp/release to upstream:master failed');
@@ -244,6 +262,11 @@ module.exports = {
             .then(function() {
                 bar.tick(10);
 
+                if (dryRun) {
+                    process.stdout.write('DRY RUN - push tag to upstream');
+                    return;
+                }
+
                 return git.exec('push', ['upstream', version])
                     .catch(function(error) {
                         var stepError = new Error('GIT - push tag to upstream failed');
@@ -251,15 +274,51 @@ module.exports = {
                         throw stepError;
                     });
             })
+            .then(function() {
+                bar.tick(10);
+
+                if (dryRun) {
+                    process.stdout.write('DRY RUN - hipchat notification');
+                    return;
+                }
+
+                var deferred = RSVP.defer();
+                var hipchat = new Hipchatter(config.hipchatUserToken);
+                var message = 'New version ' + version + ' released for ' + projectName;
+
+                hipchat.notify(config.hipchatRoomId, {
+                    message: message,
+                    color: 'green',
+                    token: config.hipchatUserToken,
+                    notify: true
+                }, function(err) {
+                    if (err === null) {
+                        process.stdout.write('\n\nSuccessfully notified the room for version ' + version + ' release\n');
+                        deferred.resolve();
+                    } else {
+                        var stepError = new Error('HIPCHAT - notification failed');
+                        stepError.parent = error;
+                        throw stepError;
+                    }
+                });
+
+                return deferred.promise;
+            })
             // Catch all errors
             .catch(function(error) {
-                process.stdout.write('\n\nERROR ' + error.message + ' ' + (error.parent ? "(" + error.parent.message + ")" : '') + '\n');
+                process.stdout.write('\nERROR ' + error.message + ' ' + (error.parent ? "(" + error.parent.message + ")" : '') + '\n');
+            })
+            .then(function() {
+                process.stdout.write('\nSuccessfully deploy ' + (dryRun ? '(in dry-run mode)' : '') + ' the release ' + version + '\n');
             })
             // Finally restore the working environment (checkout stocked working branch and delete temporary one)
             .finally(function() {
                 git.restore()
+                    .then(function() {
+                        process.stdout.write('Successfully restore git previous work state\n');
+                    })
                     .catch(function(error) {
-                        process.stdout.write('\n\nERROR ' + error.message + '\n');
+                        process.stdout.write('\n\nERROR (during git restore) ' + error.message + '\n');
                     })
                     .finally(function() {
                         process.exit(1);
