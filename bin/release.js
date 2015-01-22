@@ -9,6 +9,9 @@ program
     .version(pkg.version)
     .usage('[options]')
     .description('Automatic release tool')
+    .option('-n, --dry-run', 'make a dry-run release process')
     .parse(process.argv);
 
-release.release();
+release.release({
+    dryRun: program.dryRun,
+});
