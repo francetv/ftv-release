@@ -277,6 +277,11 @@ module.exports = {
             .then(function() {
                 bar.tick(10);
 
+                if (dryRun) {
+                    process.stdout.write('DRY RUN - hipchat notification');
+                    return;
+                }
+
                 var deferred = RSVP.defer();
                 var hipchat = new Hipchatter(config.hipchatUserToken);
                 var message = 'New version ' + version + ' released for ' + projectName;
