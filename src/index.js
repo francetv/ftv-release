@@ -182,7 +182,7 @@ module.exports = {
                                         cmd: 'check-coverage'
                                     })
                                     .catch(function(error) {
-                                        throw error;
+                                        process.stdout.write('\n\WARNING GRUNT - ' + error.message + '\n');
                                     });
                             })
                             .then(function() {
