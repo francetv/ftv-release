@@ -1,9 +1,9 @@
-#!/usr/bin/env node --harmony
+#!/usr/bin/env node
 
 var program = require('commander');
 
-var pkg = require('../package.json'),
-    release = require('../src/index.js');
+var pkg = require('../package.json');
+var release = require('../src/index.js');
 
 program
     .version(pkg.version)
@@ -13,5 +13,5 @@ program
     .parse(process.argv);
 
 release.release({
-    dryRun: program.dryRun,
+  dryRun: program.dryRun
 });
